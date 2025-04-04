@@ -19,7 +19,7 @@ jobs:
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v5
       - name: Run Build Wrapper
         run: |
-          build-wrapper-win-x86-64.exe --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} msbuild OOP_Project.cpp /t:Rebuild /p:Configuration=Release
+          build-wrapper-win-x86-64.exe --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} msbuild OOP_Project.exe /t:Rebuild /p:Configuration=Release
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
