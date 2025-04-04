@@ -278,5 +278,4 @@ block:
 			goto block;
 		}
 	}
-	return 0;
 }
