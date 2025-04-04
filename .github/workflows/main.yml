@@ -1,29 +1,48 @@
-name: SonarQube
+name: Build
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:
   build:
-    name: Build and analyze
+    name: Build
     runs-on: windows-latest
     env:
       BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+      COVERAGE_RESULTS: coverage_results # Directory where coverage results will be placed
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+
+      - name: Set up msbuild
+        uses: microsoft/setup-msbuild@v2
+      - name: Setup VSTest.console.exe # Needed to run tests and generate coverage
+        uses: darenm/Setup-VSTest@v1.2
+
       - name: Install Build Wrapper
-        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v5
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v4
+
       - name: Run Build Wrapper
         run: |
-          build-wrapper-win-x86-64.exe --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
+          build-wrapper-win-x86-64.exe --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} msbuild sonar_scanner_example.vcxproj /t:rebuild /nodeReuse:false
+      - name: Build tests
+        run: |
+          msbuild test1\test1.vcxproj
+          msbuild test2\test2.vcxproj
+      - name: Run tests with coverage
+        run: >
+          vstest.console.exe test1\*\test1.dll test2\*\test2.dll 
+          /EnableCodeCoverage 
+          /Collect:"Code Coverage;Format=Xml" 
+          /ResultsDirectory:"${{ env.COVERAGE_RESULTS }}"
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
+          SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }} # Put the name of your token here
+        with: 
+          args: > 
             --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+            --define sonar.cfamily.vscoveragexml.reportsPath="${{ env.COVERAGE_RESULTS }}/*/*.xml"
